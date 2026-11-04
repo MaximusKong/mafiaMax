@@ -19,7 +19,12 @@ function findImage(role) {
   if (!fs.existsSync(IMAGES_DIR)) return null;
   for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'svg']) {
     const file = `${role}.${ext}`;
-    if (fs.existsSync(path.join(IMAGES_DIR, file))) return `/images/${file}`;
+    const fullPath = path.join(IMAGES_DIR, file);
+    if (fs.existsSync(fullPath)) {
+      const stat = fs.statSync(fullPath);
+      const version = stat.mtimeMs.toFixed(0);
+      return `/images/${file}?v=${version}`;
+    }
   }
   return null;
 }
