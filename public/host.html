@@ -15,6 +15,7 @@
     --ink: #0f1f4a; --ink-soft: #4b6cb7;
     --accent: #2563eb; --accent-2: #3b82f6; --line: #bfdbfe;
     --mafia-bg: #fecaca; --mafia-ink: #7f1d1d;
+    --yakuza-bg: #e9d5ff; --yakuza-ink: #581c87;
     --special-bg: #bfdbfe; --special-ink: #1e3a8a;
     --citizen-bg: #bbf7d0; --citizen-ink: #14532d;
   }
@@ -77,6 +78,7 @@
   li.player.role-mafia   { border-left-color: #7f1d1d; background: var(--mafia-bg); color: var(--mafia-ink); }
   li.player.role-don     { border-left-color: #7f1d1d; background: var(--mafia-bg); color: var(--mafia-ink); }
   li.player.role-rebel   { border-left-color: #7f1d1d; background: var(--mafia-bg); color: var(--mafia-ink); }
+  li.player.role-yakuza  { border-left-color: #7e22ce; background: var(--yakuza-bg); color: var(--yakuza-ink); }
   li.player.role-sheriff { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-doctor  { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-maniac  { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
@@ -84,6 +86,7 @@
   li.player.role-journalist { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-mayor   { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-bodyguard { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
+  li.player.role-lawyer  { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-citizen { border-left-color: #14532d; background: var(--citizen-bg); color: var(--citizen-ink); }
   .dot {
     display: inline-block; width: 8px; height: 8px;
@@ -308,12 +311,17 @@
     background: var(--card-2); color: var(--ink);
     border-left: 4px solid transparent;
   }
-  .game-end-roles li.role-mafia, .game-end-roles li.role-don, .game-end-roles li.role-maniac, .game-end-roles li.role-rebel {
+  .game-end-roles li.role-mafia, .game-end-roles li.role-don,
+  .game-end-roles li.role-maniac, .game-end-roles li.role-rebel {
     background: #fecaca; color: #7f1d1d; border-left-color: #7f1d1d;
+  }
+  .game-end-roles li.role-yakuza {
+    background: #e9d5ff; color: #581c87; border-left-color: #7e22ce;
   }
   .game-end-roles li.role-sheriff, .game-end-roles li.role-doctor,
   .game-end-roles li.role-beauty, .game-end-roles li.role-journalist,
-  .game-end-roles li.role-mayor, .game-end-roles li.role-bodyguard {
+  .game-end-roles li.role-mayor, .game-end-roles li.role-bodyguard,
+  .game-end-roles li.role-lawyer {
     background: #bfdbfe; color: #1e3a8a; border-left-color: #1e3a8a;
   }
   .game-end-roles li.role-citizen {
@@ -375,6 +383,8 @@
       <div id="gameList" style="display:none;">
         <div class="section-title">Мафия</div>
         <ul id="mafiaList"></ul>
+        <div class="section-title">Якудза</div>
+        <ul id="yakuzaList"></ul>
         <div class="section-title">Особые роли</div>
         <ul id="specialList"></ul>
         <div class="section-title">Мирные жители</div>
@@ -391,6 +401,10 @@
         <div id="immunityBox" style="display:none; margin-top:12px;">
           <div class="section-title">Защищены Красавчиком</div>
           <ul id="immunityList"></ul>
+        </div>
+        <div id="lawyerBox" style="display:none; margin-top:12px;">
+          <div class="section-title">Защищён адвокатом</div>
+          <ul id="lawyerList"></ul>
         </div>
         <div id="mayorBox" style="display:none; margin-top:12px;">
           <div class="section-title">Способности</div>
@@ -499,6 +513,7 @@
   const lobbyList = document.getElementById('lobbyList');
   const gameList = document.getElementById('gameList');
   const mafiaList = document.getElementById('mafiaList');
+  const yakuzaList = document.getElementById('yakuzaList');
   const specialList = document.getElementById('specialList');
   const citizenList = document.getElementById('citizenList');
   const nightControls = document.getElementById('nightControls');
@@ -519,6 +534,8 @@
   const dayResults = document.getElementById('dayResults');
   const immunityBox = document.getElementById('immunityBox');
   const immunityList = document.getElementById('immunityList');
+  const lawyerBox = document.getElementById('lawyerBox');
+  const lawyerList = document.getElementById('lawyerList');
   const revoteBox = document.getElementById('revoteBox');
   const revoteList = document.getElementById('revoteList');
   const hintLogBox = document.getElementById('hintLogBox');
@@ -707,7 +724,7 @@
 
   function buildGallery() {
     galleryGrid.innerHTML = '';
-    const order = ['citizen', 'mafia', 'don', 'rebel', 'sheriff', 'doctor', 'mayor', 'bodyguard', 'maniac', 'beauty', 'journalist', 'unknown'];
+    const order = ['citizen', 'mafia', 'don', 'rebel', 'yakuza', 'sheriff', 'doctor', 'mayor', 'bodyguard', 'lawyer', 'maniac', 'beauty', 'journalist', 'unknown'];
     order.forEach(role => {
       const info = ROLES[role];
       if (!info) return;
@@ -792,11 +809,13 @@
         { value: '', label: 'Авто' },
         { value: 'mafia', label: 'Мафия' },
         { value: 'don', label: 'Дон' },
+        { value: 'yakuza', label: 'Якудза' },
         { value: 'rebel', label: 'Мятежник' },
         { value: 'sheriff', label: 'Следователь' },
         { value: 'doctor', label: 'Доктор' },
         { value: 'mayor', label: 'Мер' },
         { value: 'bodyguard', label: 'Телохранитель' },
+        { value: 'lawyer', label: 'Адвокат' },
         { value: 'maniac', label: 'Маньяк' },
         { value: 'beauty', label: 'Красавчик' },
         { value: 'journalist', label: 'Журналист' },
@@ -848,13 +867,15 @@
   });
 
   function renderGamePlayers(players) {
-    const mafia = [], special = [], citizens = [];
+    const mafia = [], yakuza = [], special = [], citizens = [];
     players.forEach(p => {
       if (p.role === 'mafia' || p.role === 'don' || (p.role === 'rebel' && p.rebelAwakened)) mafia.push(p);
+      else if (p.role === 'yakuza') yakuza.push(p);
       else if (p.role === 'citizen' || p.role === 'rebel') citizens.push(p);
       else special.push(p);
     });
     renderGroup(mafiaList, mafia);
+    renderGroup(yakuzaList, yakuza);
     renderGroup(specialList, special);
     renderGroup(citizenList, citizens);
   }
@@ -926,7 +947,8 @@
     nightActions.innerHTML = '';
     const roleLabelRu = {
       mafia: 'Мафия', don: 'Дон', sheriff: 'Следователь', doctor: 'Доктор',
-      maniac: 'Маньяк', beauty: 'Красавчик', journalist: 'Журналист'
+      maniac: 'Маньяк', beauty: 'Красавчик', journalist: 'Журналист',
+      yakuza: 'Якудза'
     };
 
     Object.entries(state.actions).forEach(([role, map]) => {
@@ -948,6 +970,28 @@
           li.className = 'player';
           li.style.borderLeftColor = act.mode === 'invite' ? '#16a34a' : '#7f1d1d';
           li.textContent = `${act.mode === 'invite' ? 'Приглашение' : 'Убийство'}: ${actor.name} → ${target ? target.name : '?'}`;
+          nightActions.appendChild(li);
+        });
+        return;
+      }
+      if (role === 'yakuza') {
+        Object.entries(map).forEach(([actorId, act]) => {
+          if (act === null) {
+            const actor = state.players.find(p => p.id === actorId);
+            if (!actor) return;
+            const li = document.createElement('li');
+            li.className = 'player';
+            li.textContent = `Пропуск (якудза): ${actor.name}`;
+            nightActions.appendChild(li);
+            return;
+          }
+          const actor = state.players.find(p => p.id === actorId);
+          const target = state.players.find(p => p.id === act.targetId);
+          if (!actor) return;
+          const li = document.createElement('li');
+          li.className = 'player';
+          li.style.borderLeftColor = '#7e22ce';
+          li.textContent = `${act.mode === 'kill' ? 'Убийство (якудза)' : 'Проверка (якудза)'}: ${actor.name} → ${target ? target.name : '?'}`;
           nightActions.appendChild(li);
         });
         return;
@@ -1099,6 +1143,21 @@
       immunityBox.style.display = 'none';
     }
 
+    // Адвокат
+    if (state.lawyerTarget) {
+      lawyerBox.style.display = 'block';
+      lawyerList.innerHTML = '';
+      const t = state.players.find(p => p.id === state.lawyerTarget);
+      if (t) {
+        const li = document.createElement('li');
+        li.className = 'player role-lawyer';
+        li.textContent = `${t.name} защищён адвокатом от голосования`;
+        lawyerList.appendChild(li);
+      }
+    } else {
+      lawyerBox.style.display = 'none';
+    }
+
     const abilityLines = [];
     if (state.mayorUsed) abilityLines.push('Мер использовал способность');
     if (state.mayorVetoed) abilityLines.push('Голосование отменено мером');
@@ -1161,13 +1220,18 @@
     if (winner === 'manual') gameEndTitle.textContent = 'Игра завершена ведущим';
     else if (winner === 'mafia') gameEndTitle.textContent = 'Победила МАФИЯ';
     else if (winner === 'maniac') gameEndTitle.textContent = 'Победил МАНЬЯК';
+    else if (winner === 'yakuza') gameEndTitle.textContent = 'Победила ЯКУДЗА';
     else gameEndTitle.textContent = 'Победили МИРНЫЕ';
 
     gameEndRoles.innerHTML = '';
-    const order = { mafia: 0, don: 1, rebel: 2, maniac: 3, sheriff: 4, doctor: 5, mayor: 6, bodyguard: 7, beauty: 8, journalist: 9, citizen: 10 };
+    const order = {
+      mafia: 0, don: 1, rebel: 2, yakuza: 3, maniac: 4,
+      sheriff: 5, doctor: 6, mayor: 7, bodyguard: 8, lawyer: 9,
+      beauty: 10, journalist: 11, citizen: 12
+    };
     roles.slice().sort((a, b) => {
-      const ra = a.originalRole === 'rebel' && !a.rebelAwakened ? 11 : (order[a.role] ?? 99);
-      const rb = b.originalRole === 'rebel' && !b.rebelAwakened ? 11 : (order[b.role] ?? 99);
+      const ra = a.originalRole === 'rebel' && !a.rebelAwakened ? 13 : (order[a.role] ?? 99);
+      const rb = b.originalRole === 'rebel' && !b.rebelAwakened ? 13 : (order[b.role] ?? 99);
       return ra - rb;
     }).forEach(p => {
       const li = document.createElement('li');
@@ -1263,7 +1327,8 @@
       mafia: 'МАФИЯ', don: 'ДОН', citizen: 'МИРНЫЙ',
       sheriff: 'СЛЕДОВАТЕЛЬ', doctor: 'ДОКТОР',
       maniac: 'МАНЬЯК', beauty: 'КРАСАВЧИК', journalist: 'ЖУРНАЛИСТ',
-      mayor: 'МЕР', bodyguard: 'ТЕЛОХРАНИТЕЛЬ', rebel: 'МЯТЕЖНИК'
+      mayor: 'МЕР', bodyguard: 'ТЕЛОХРАНИТЕЛЬ', rebel: 'МЯТЕЖНИК',
+      lawyer: 'АДВОКАТ', yakuza: 'ЯКУДЗА'
     })[role] || role;
   }
 
