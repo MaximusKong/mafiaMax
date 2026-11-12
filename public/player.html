@@ -9,7 +9,6 @@
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
-    --bg: #0f1f4a;
     --bg-2: #1e3a8a;
     --bg-3: #2563eb;
     --card: #ffffff;
@@ -23,7 +22,8 @@
   html, body {
     margin: 0; padding: 0; min-height: 100vh;
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg); color: var(--ink);
+    background: #0f1f4a;
+    color: var(--ink);
     overflow-x: hidden;
   }
   body {
@@ -31,13 +31,45 @@
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     min-height: 100vh;
+    position: relative;
+    background-color: #0f1f4a;
   }
+  /* Дневной/ночной фон */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url('/images/day-city.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 1;
+    transition: opacity 1s ease;
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url('/images/night-city.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1s ease;
+    z-index: -1;
+  }
+  body.is-night::after { opacity: 1; }
+  body.is-night::before { opacity: 0; }
+
   .card {
     background: var(--card); border-radius: 16px;
     padding: 26px; width: 100%; max-width: 420px;
     box-shadow: 0 6px 24px rgba(0,0,0,0.4);
     border: 1px solid var(--line);
     animation: fadeInUp 0.4s ease-out;
+    position: relative;
+    z-index: 1;
   }
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(16px); }
@@ -121,7 +153,6 @@
   #inviteBtn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(22,163,74,0.6); }
   #inviteBtn:active { transform: scale(0.95); }
 
-  /* Кнопка способности — в левом верхнем углу, как «Р», не мигает */
   #abilityBtn {
     position: fixed; top: 16px; left: 16px;
     width: 52px; height: 52px; border-radius: 12px;
@@ -253,11 +284,19 @@
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     width: 100%; padding-top: 20px;
+    position: relative;
+    z-index: 1;
   }
 
   #nightScreen, #dayScreen {
     display: none; width: 100%; max-width: 460px; padding-top: 20px;
     animation: fadeInUp 0.4s ease-out;
+    position: relative;
+    z-index: 1;
+  }
+  #nightScreen .card, #dayScreen .card {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(4px);
   }
   #nightTimer {
     text-align: center; font-size: 34px; font-weight: 800;
@@ -297,6 +336,7 @@
   }
   ul.targets li.target.dead:hover { background: #94a3b8; border-color: #64748b; transform: none; box-shadow: none; }
   ul.targets li.target.immune { border-color: #fbcfe8; background: #fce7f3; }
+  ul.targets li.target.lawyer-protected { border-color: #c4b5fd; background: #ede9fe; }
   .vote-dots { display: inline-flex; gap: 3px; margin-left: 8px; }
   .vote-dots .d {
     width: 10px; height: 10px; border-radius: 50%; background: #dc2626;
@@ -564,7 +604,6 @@
   .modal-buttons button.cancel { background: #64748b; }
   .modal-buttons button.cancel:hover { background: #788599; }
 
-  /* Модалки выбора игрока (телохранитель, адвокат) */
   #bodyguardModal .role-card, #lawyerModal .role-card { max-width: 480px; }
   #bodyguardTargets, #lawyerTargets {
     list-style: none;
@@ -595,7 +634,6 @@
     transform: scale(0.98);
   }
 
-  /* Якудза — фиолетовый акцент */
   #nightActionArea .yakuza-mode button.active {
     background: #7e22ce;
   }
@@ -829,7 +867,7 @@
         <div class="role-title" style="font-size:20px;">Кого защитить?</div>
       </div>
       <div class="role-desc" style="padding: 14px 22px 0;">
-        Выбранный игрок не сможет быть выбран на дневном голосовании. Нельзя выбрать себя и одного и того же дважды подряд.
+        Выбранный игрок не сможет быть выбран на дневном голосовании. Уже отданные за него голоса будут возвращены. Нельзя выбрать себя и одного и того же дважды подряд.
       </div>
       <ul id="lawyerTargets"></ul>
       <div class="modal-buttons">
@@ -955,6 +993,17 @@
   let canMayorVeto = false;
   let canBodyguardSave = false;
   let canLawyerSave = false;
+
+  // Управление фоном
+  function setBackground(phase) {
+    if (phase === 'night') {
+      document.body.classList.add('is-night');
+    } else {
+      document.body.classList.remove('is-night');
+    }
+  }
+  // Стартовый фон — дневной
+  setBackground('day');
 
   function showScreen(el) {
     [joinScreen, waitScreen].forEach(s => s.style.display = 'none');
@@ -1365,10 +1414,24 @@
       inviteBtn.style.display = 'none';
       inviteModal.classList.remove('open');
     }
-    if (phase === 'roles') { showScreen(waitScreen); roomLabel.textContent = roomId; rolesBtn.style.display = 'none'; }
-    if (phase === 'night') { nightScreen.style.display = 'block'; nightDay.textContent = day; }
-    if (phase === 'day') { dayScreen.style.display = 'block'; dayDay.textContent = day; }
+    if (phase === 'roles') {
+      setBackground('day');
+      showScreen(waitScreen);
+      roomLabel.textContent = roomId;
+      rolesBtn.style.display = 'none';
+    }
+    if (phase === 'night') {
+      setBackground('night');
+      nightScreen.style.display = 'block';
+      nightDay.textContent = day;
+    }
+    if (phase === 'day') {
+      setBackground('day');
+      dayScreen.style.display = 'block';
+      dayDay.textContent = day;
+    }
     if (phase === 'ended') {
+      setBackground('day');
       showScreen(waitScreen);
     }
   });
@@ -1463,7 +1526,6 @@
 
     const alreadyActed = data.myConfirmed;
 
-    // Дон — режимы
     if (role === 'don' && isMafiaStep && !alreadyActed) {
       donModeSwitch.style.display = 'flex';
       modeKill.classList.toggle('active', donMode === 'kill');
@@ -1483,12 +1545,10 @@
       recruitsLeftBox.style.display = 'none';
     }
 
-    // Якудза — режимы
     if (role === 'yakuza' && isYakuzaStep && data.yakuzaData) {
       yakuzaModeSwitch.style.display = 'flex';
       yakuzaModeCheck.classList.toggle('active', yakuzaMode === 'check');
       yakuzaModeKill.classList.toggle('active', yakuzaMode === 'kill');
-      // Кнопка «Убить» доступна, если есть цели
       const canKill = data.yakuzaData.canKillPhase && data.yakuzaData.killTargets.length > 0;
       yakuzaModeKill.disabled = !canKill;
       if (!canKill && yakuzaMode === 'kill') {
@@ -1525,23 +1585,16 @@
       nightTargets.appendChild(li);
     }
 
-    // Якудза — если уже действовал в эту ночь
-    if (role === 'yakuza' && isYakuzaStep) {
-      // Ничего не показываем как подтверждение — каждый ход отдельный
-    }
-
     const isOwnTeam = isMafiaStep && (role === 'mafia' || role === 'don' || role === 'rebel');
 
     data.players.forEach(p => {
       if (!p.alive || p.id === data.yourId) return;
       if (alreadyActed && (role === 'mafia' || role === 'don' || role === 'rebel')) return;
 
-      // Якудза — список целей зависит от режима
       if (role === 'yakuza' && isYakuzaStep && data.yakuzaData) {
         if (yakuzaMode === 'kill') {
           if (!data.yakuzaData.killTargets.includes(p.id)) return;
         }
-        // В режиме «Проверить» — все живые
       }
 
       const isOwnMafiaTeam = isOwnTeam && (p.role === 'mafia' || p.role === 'don' || p.role === 'rebel');
@@ -1588,7 +1641,6 @@
         }
       }
 
-      // Подсветка выбора якудзы
       if (role === 'yakuza' && isYakuzaStep) {
         if (yakuzaSelected === p.id) li.classList.add('selected');
       } else if (isMafiaStep && data.myProposal && data.myProposal.targetId === p.id) {
@@ -1599,7 +1651,6 @@
         li.onclick = () => {
           if (role === 'yakuza' && isYakuzaStep) {
             yakuzaSelected = p.id;
-            // Снимаем выделение с других
             nightTargets.querySelectorAll('li.target').forEach(el => {
               if (el.dataset.id !== String(p.id)) el.classList.remove('selected');
             });
@@ -1796,6 +1847,7 @@
       li.className = 'target';
       if (!p.alive) li.classList.add('dead');
       if (immunity.includes(p.id)) li.classList.add('immune');
+      if (lawyerTarget === p.id) li.classList.add('lawyer-protected');
 
       const nameSpan = document.createElement('span');
       nameSpan.textContent = p.name;
@@ -1882,6 +1934,7 @@
     inviteBtn.style.display = 'none';
     inviteModal.classList.remove('open');
     abilityBtn.style.display = 'none';
+    setBackground('day');
 
     if (winner === 'manual') gameEndTitle.textContent = 'Игра завершена ведущим';
     else if (winner === 'mafia') gameEndTitle.textContent = 'Победила МАФИЯ';
@@ -1928,6 +1981,7 @@
     rolesBtn.style.display = 'none';
     inviteBtn.style.display = 'none';
     abilityBtn.style.display = 'none';
+    setBackground('day');
     roomId = null;
     playerToken = null;
     myRole = null;
