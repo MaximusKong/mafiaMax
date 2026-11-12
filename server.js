@@ -30,7 +30,6 @@ function findImage(role) {
 }
 
 // ---------- Конфиг ночи ----------
-// Якудза ходит после beauty, до остальных
 const NIGHT_ORDER = [
   { role: 'beauty',     seconds: 60, label: 'Красавчик' },
   { role: 'yakuza',     seconds: 60, label: 'Якудза' },
@@ -87,8 +86,6 @@ function roleNameRu(role) {
   })[role] || role;
 }
 
-// Команда для журналиста и проверки якудзы
-// Мафия+дон = одна команда; мятежник после пробуждения = мафия; якудза/маньяк — сами по себе
 function getTeamKey(player) {
   if (player.role === 'mafia' || player.role === 'don') return 'mafia';
   if (player.role === 'rebel' && player.rebelAwakened) return 'mafia';
@@ -101,7 +98,6 @@ function isSameTeam(a, b) {
   return getTeamKey(a) === getTeamKey(b);
 }
 
-// Является ли игрок мафиози (для проверки якудзы)
 function isMafioso(player) {
   if (player.role === 'mafia' || player.role === 'don') return true;
   if (player.role === 'rebel' && player.rebelAwakened) return true;
@@ -1041,7 +1037,7 @@ function broadcastDayState(roomId) {
     const isLawyer = p.role === 'lawyer' && p.alive;
     const canMayorVeto = isMayor && !game.mayorUsed && !game.firstDay && !game.mayorVetoed;
     const canBodyguardSave = isBodyguard && !game.bodyguardUsed && p.bodyguardLives > 1;
-    const canLawyerSave = isLawyer && !game.firstDay;
+    const canLawyerSave = isLawyer && !game.firstDay && !game.lawyerUsedToday;
 
     io.to(p.socketId).emit('dayState', {
       day: game.day,
@@ -1467,6 +1463,7 @@ io.on('connection', (socket) => {
     if (!player || !player.alive) return callback?.({ ok: false, error: 'Игрок недоступен' });
     if (player.role !== 'lawyer') return callback?.({ ok: false, error: 'Вы не адвокат' });
     if (game.firstDay) return callback?.({ ok: false, error: 'В первый день нельзя' });
+    if (game.lawyerUsedToday) return callback?.({ ok: false, error: 'Вы уже выбрали игрока сегодня' });
 
     const target = game.players.find(p => p.id === targetId && p.alive);
     if (!target) return callback?.({ ok: false, error: 'Цель недоступна' });
@@ -1544,7 +1541,7 @@ io.on('connection', (socket) => {
       const target = game.players.find(p => p.id === targetId && p.alive);
       if (!target) return callback?.({ ok: false, error: 'Цель недоступна' });
       if ((game.nightImmunity || []).includes(targetId)) {
-        return callback?.({ ok: false, error: 'Этот игрок защищён Красавчиком' });
+        return callback?.({ ok: false, error: 'Этот игрок защищён красавчиком' });
       }
       if (game.lawyerTarget === targetId) {
         return callback?.({ ok: false, error: 'Этот игрок защищён адвокатом' });
@@ -1567,6 +1564,7 @@ io.on('connection', (socket) => {
       game.mayorVetoed = false;
       game.phase = 'roles';
       game.lawyerTarget = null;
+      game.lawyerUsedToday = false;
       const result = { day: game.day, lynched: null, tie: false, mayorVeto: true };
       io.to(game.hostSocketId).emit('dayResults', result);
       game.players.forEach(p => {
@@ -1583,6 +1581,7 @@ io.on('connection', (socket) => {
     if (game.firstDay) {
       game.phase = 'roles';
       game.lawyerTarget = null;
+      game.lawyerUsedToday = false;
       io.to(game.hostSocketId).emit('dayResults', { day: 0, lynched: null, tie: false, firstDay: true });
       game.players.forEach(p => {
         if (!p.socketId) return;
@@ -1620,6 +1619,7 @@ io.on('connection', (socket) => {
       game.revoteCandidates = null;
       game.phase = 'roles';
       game.lawyerTarget = null;
+      game.lawyerUsedToday = false;
       const result = { day: game.day, lynched: null, tie: true };
       io.to(game.hostSocketId).emit('dayResults', result);
       game.players.forEach(p => {
@@ -1642,6 +1642,7 @@ io.on('connection', (socket) => {
     game.revoteCandidates = null;
     game.phase = 'roles';
     game.lawyerTarget = null;
+    game.lawyerUsedToday = false;
 
     let savedByBodyguard = false;
     let bodyguardSavedHimself = false;
