@@ -1036,7 +1036,7 @@ function broadcastDayState(roomId) {
     const isBodyguard = p.role === 'bodyguard' && p.alive;
     const isLawyer = p.role === 'lawyer' && p.alive;
     const canMayorVeto = isMayor && !game.mayorUsed && !game.firstDay && !game.mayorVetoed;
-    const canBodyguardSave = isBodyguard && !game.bodyguardUsed && p.bodyguardLives > 1;
+    const canBodyguardSave = isBodyguard && !game.bodyguardUsed && p.bodyguardLives > 1 && !game.firstDay;
     const canLawyerSave = isLawyer && !game.firstDay && !game.lawyerUsedToday;
 
     io.to(p.socketId).emit('dayState', {
