@@ -18,11 +18,14 @@
     --accent: #2563eb;
     --accent-2: #3b82f6;
     --line: #bfdbfe;
+    --info-bg: #dbeafe;
+    --info-border: #93c5fd;
+    --info-ink: #1e3a8a;
   }
   html, body {
     margin: 0; padding: 0; min-height: 100vh;
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: #0f1f4a;
+    background-color: #7fa8c9;
     color: var(--ink);
     overflow-x: hidden;
   }
@@ -32,13 +35,14 @@
     align-items: center; justify-content: center;
     min-height: 100vh;
     position: relative;
-    background-color: #0f1f4a;
+    z-index: 0;
   }
   /* Дневной/ночной фон */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
+    background-color: #7fa8c9;
     background-image: url('/images/day-city.jpg');
     background-size: cover;
     background-position: center;
@@ -51,6 +55,7 @@
     content: '';
     position: fixed;
     inset: 0;
+    background-color: #0a1535;
     background-image: url('/images/night-city.jpg');
     background-size: cover;
     background-position: center;
@@ -335,8 +340,8 @@
     text-decoration: none; cursor: default; border-color: #64748b;
   }
   ul.targets li.target.dead:hover { background: #94a3b8; border-color: #64748b; transform: none; box-shadow: none; }
-  ul.targets li.target.immune { border-color: #fbcfe8; background: #fce7f3; }
-  ul.targets li.target.lawyer-protected { border-color: #c4b5fd; background: #ede9fe; }
+  ul.targets li.target.immune { border-color: #93c5fd; background: #dbeafe; }
+  ul.targets li.target.lawyer-protected { border-color: #93c5fd; background: #dbeafe; }
   .vote-dots { display: inline-flex; gap: 3px; margin-left: 8px; }
   .vote-dots .d {
     width: 10px; height: 10px; border-radius: 50%; background: #dc2626;
@@ -359,9 +364,9 @@
   .invite-actions button.reject { background: #dc2626; }
   .invite-actions button.reject:hover { background: #ef4444; }
   .blocked-note {
-    background: #fce7f3; border: 1px solid #fbcfe8;
+    background: #dbeafe; border: 1px solid #93c5fd;
     border-radius: 10px; padding: 14px; text-align: center;
-    color: #831843; font-size: 14px; margin-bottom: 12px;
+    color: #1e3a8a; font-size: 14px; margin-bottom: 12px;
     animation: shake 0.5s ease-out;
   }
   @keyframes shake {
@@ -370,9 +375,9 @@
     75% { transform: translateX(4px); }
   }
   .feedback-note {
-    background: #fef3c7; border: 1px solid #fde68a;
+    background: var(--info-bg); border: 1px solid var(--info-border);
     border-radius: 10px; padding: 12px; text-align: center;
-    color: #78350f; font-size: 14px; margin-bottom: 12px;
+    color: var(--info-ink); font-size: 14px; margin-bottom: 12px;
     animation: fadeInUp 0.3s ease-out;
   }
   .hint-list { padding: 0 20px; }
@@ -710,11 +715,11 @@
         Переголосование: голосуйте только за кандидатов
       </div>
 
-      <div id="mayorVetoNote" class="feedback-note" style="display:none; background:#dbeafe; border-color:#93c5fd; color:#1e3a8a;">
+      <div id="mayorVetoNote" class="feedback-note" style="display:none;">
         Мер отменил голосование.
       </div>
 
-      <div id="lawyerNote" class="feedback-note" style="display:none; background:#e9d5ff; border-color:#c4b5fd; color:#581c87;">
+      <div id="lawyerNote" class="feedback-note" style="display:none;">
         Один из игроков защищён адвокатом.
       </div>
 
@@ -839,7 +844,7 @@
       </div>
       <div class="modal-buttons" style="margin-top: 14px;">
         <button class="cancel" id="mayorCancel">Нет</button>
-        <button id="mayorConfirm" style="background:#dc2626;">Да, отменить</button>
+        <button id="mayorConfirm" style="background:#1e3a8a;">Да, отменить</button>
       </div>
     </div>
   </div>
@@ -867,7 +872,7 @@
         <div class="role-title" style="font-size:20px;">Кого защитить?</div>
       </div>
       <div class="role-desc" style="padding: 14px 22px 0;">
-        Выбранный игрок не сможет быть выбран на дневном голосовании. Уже отданные за него голоса будут возвращены. Нельзя выбрать себя и одного и того же дважды подряд.
+        Выбранный игрок не сможет быть выбран на дневном голосовании. Уже отданные за него голоса будут возвращены. Выбор делается один раз в день и не может быть изменён. Нельзя выбрать себя и одного и того же дважды подряд.
       </div>
       <ul id="lawyerTargets"></ul>
       <div class="modal-buttons">
@@ -1002,7 +1007,6 @@
       document.body.classList.remove('is-night');
     }
   }
-  // Стартовый фон — дневной
   setBackground('day');
 
   function showScreen(el) {
@@ -1243,6 +1247,7 @@
 
   function openLawyerPicker() {
     if (!dayData || !dayData.players) return;
+    if (dayData.lawyerUsedToday) return; // защита уже использована сегодня
     lawyerTargets.innerHTML = '';
     const lastTarget = dayData.lastLawyerTarget || null;
     dayData.players.forEach(p => {
@@ -1266,6 +1271,8 @@
           if (!res?.ok) alert('Ошибка: ' + (res?.error || 'неизвестно'));
           else {
             lawyerModal.classList.remove('open');
+            abilityBtn.style.display = 'none';
+            canLawyerSave = false;
           }
         });
       };
@@ -1853,7 +1860,7 @@
       nameSpan.textContent = p.name;
       if (p.id === data.yourId) nameSpan.textContent += ' (вы)';
       if (!p.alive) nameSpan.textContent += ' — Убит';
-      if (immunity.includes(p.id)) nameSpan.textContent += ' (защищён)';
+      if (immunity.includes(p.id)) nameSpan.textContent += ' (защищён красавчиком)';
       if (lawyerTarget === p.id) nameSpan.textContent += ' (защищён адвокатом)';
       if (revote && revote.includes(p.id)) nameSpan.textContent += ' — кандидат';
       li.appendChild(nameSpan);
