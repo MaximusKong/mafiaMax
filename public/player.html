@@ -21,6 +21,12 @@
     --info-bg: #dbeafe;
     --info-border: #93c5fd;
     --info-ink: #1e3a8a;
+    --btn-kill: #dc2626;
+    --btn-kill-hover: #ef4444;
+    --btn-ok: #16a34a;
+    --btn-ok-hover: #22c55e;
+    --btn-neutral: #2563eb;
+    --btn-neutral-hover: #3b82f6;
   }
   html, body {
     margin: 0; padding: 0; min-height: 100vh;
@@ -144,7 +150,7 @@
   #inviteBtn {
     position: fixed; top: 16px; right: 80px;
     width: 52px; height: 52px; border-radius: 12px;
-    background: #16a34a; border: 2px solid #15803d;
+    background: var(--btn-ok); border: 2px solid #15803d;
     color: #fff;
     padding: 0;
     display: none; align-items: center; justify-content: center;
@@ -352,16 +358,13 @@
     to { transform: scale(1); }
   }
   .tie-info { text-align: center; color: var(--ink-soft); font-size: 13px; margin-top: 8px; }
-  .mode-switch { display: flex; gap: 8px; margin-bottom: 12px; }
-  .mode-switch button { flex: 1; padding: 10px; font-size: 14px; background: var(--bg-2); }
-  .mode-switch button.active { background: var(--accent); }
   .recruits-left { text-align: center; color: var(--ink-soft); font-size: 13px; margin-bottom: 8px; }
   .invite-actions { display: flex; gap: 8px; padding: 0 20px 20px; }
   .invite-actions button { padding: 14px; }
-  .invite-actions button.accept { background: #16a34a; }
-  .invite-actions button.accept:hover { background: #22c55e; }
-  .invite-actions button.reject { background: #dc2626; }
-  .invite-actions button.reject:hover { background: #ef4444; }
+  .invite-actions button.accept { background: var(--btn-ok); }
+  .invite-actions button.accept:hover { background: var(--btn-ok-hover); }
+  .invite-actions button.reject { background: var(--btn-kill); }
+  .invite-actions button.reject:hover { background: var(--btn-kill-hover); }
   .blocked-note {
     background: #dbeafe; border: 1px solid #93c5fd;
     border-radius: 10px; padding: 14px; text-align: center;
@@ -414,10 +417,10 @@
   .gallery-header h2 { margin: 0; font-size: 22px; }
   .gallery-close {
     width: auto; padding: 10px 18px;
-    background: #dc2626; font-size: 14px;
+    background: var(--btn-kill); font-size: 14px;
     transition: background 0.2s, transform 0.1s;
   }
-  .gallery-close:hover { background: #ef4444; }
+  .gallery-close:hover { background: var(--btn-kill-hover); }
   .gallery-close:active { transform: scale(0.96); }
   .gallery-grid {
     display: grid;
@@ -601,12 +604,36 @@
   }
   .game-end-btn:hover { background: var(--bg-3); }
 
+  /* ===== Режимы дона и якудзы ===== */
+  .mode-switch { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mode-switch button {
+    flex: 1; padding: 10px; font-size: 14px;
+    background: var(--btn-neutral); color: #fff;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .mode-switch button:hover:not(:disabled) { background: var(--btn-neutral-hover); }
+  .mode-switch button:disabled { background: #94a3b8; cursor: not-allowed; }
+  .mode-switch button.mode-kill.active { background: var(--btn-kill); }
+  .mode-switch button.mode-kill.active:hover:not(:disabled) { background: var(--btn-kill-hover); }
+  .mode-switch button.mode-invite.active,
+  .mode-switch button.mode-check.active { background: var(--btn-ok); }
+  .mode-switch button.mode-invite.active:hover:not(:disabled),
+  .mode-switch button.mode-check.active:hover:not(:disabled) { background: var(--btn-ok-hover); }
+
+  /* Кнопки модалок */
   .modal-buttons {
     display: flex; gap: 8px; padding: 0 20px 20px;
   }
   .modal-buttons button { flex: 1; padding: 14px; }
-  .modal-buttons button.cancel { background: #64748b; }
-  .modal-buttons button.cancel:hover { background: #788599; }
+  .modal-buttons button.confirm { background: var(--btn-ok); }
+  .modal-buttons button.confirm:hover:not(:disabled) { background: var(--btn-ok-hover); }
+  .modal-buttons button.cancel { background: var(--btn-kill); }
+  .modal-buttons button.cancel:hover:not(:disabled) { background: var(--btn-kill-hover); }
+
+  /* Кнопки действий — зелёные */
+  .btn-ok { background: var(--btn-ok); }
+  .btn-ok:hover:not(:disabled) { background: var(--btn-ok-hover); }
 
   #bodyguardModal .role-card, #lawyerModal .role-card { max-width: 480px; }
   #bodyguardTargets, #lawyerTargets {
@@ -636,10 +663,6 @@
   }
   #bodyguardTargets li:active, #lawyerTargets li:active {
     transform: scale(0.98);
-  }
-
-  #nightActionArea .yakuza-mode button.active {
-    background: #7e22ce;
   }
 </style>
 </head>
@@ -684,24 +707,24 @@
       </div>
 
       <div id="nightActionArea" style="display:none;">
-        <div id="donModeSwitch" class="mode-switch yakuza-mode" style="display:none;">
-          <button id="modeKill" class="active">Убить</button>
-          <button id="modeInvite">Пригласить</button>
+        <div id="donModeSwitch" class="mode-switch" style="display:none;">
+          <button id="modeKill" class="mode-kill active">Убить</button>
+          <button id="modeInvite" class="mode-invite">Пригласить</button>
         </div>
         <div id="yakuzaModeSwitch" class="mode-switch" style="display:none;">
-          <button id="yakuzaModeCheck" class="active">Проверить</button>
-          <button id="yakuzaModeKill">Убить</button>
+          <button id="yakuzaModeCheck" class="mode-check active">Проверить</button>
+          <button id="yakuzaModeKill" class="mode-kill">Убить</button>
         </div>
         <div id="recruitsLeftBox" class="recruits-left" style="display:none;"></div>
         <div class="sub" id="nightInstruction"></div>
         <ul id="nightTargets" class="targets"></ul>
-        <button id="doctorSelfBtn" style="display:none; margin-top:8px; background:#16a34a;">Выбрать себя</button>
-        <button id="mafiaConfirmBtn" style="display:none; margin-top:8px;">Подтвердить выбор</button>
-        <button id="yakuzaConfirmBtn" style="display:none; margin-top:8px; background:#7e22ce;">Подтвердить</button>
-        <button id="nightConfirmBtn" style="display:none; margin-top:12px;">Подтвердить</button>
+        <button id="doctorSelfBtn" class="btn-ok" style="display:none; margin-top:8px;">Выбрать себя</button>
+        <button id="mafiaConfirmBtn" class="btn-ok" style="display:none; margin-top:8px;">Подтвердить выбор</button>
+        <button id="yakuzaConfirmBtn" class="btn-ok" style="display:none; margin-top:8px;">Подтвердить</button>
+        <button id="nightConfirmBtn" class="btn-ok" style="display:none; margin-top:12px;">Подтвердить</button>
       </div>
 
-      <button id="blockedContinueBtn" style="display:none; margin-top:12px; background:#16a34a;">Продолжить</button>
+      <button id="blockedContinueBtn" class="btn-ok" style="display:none; margin-top:12px;">Продолжить</button>
     </div>
   </div>
 
@@ -843,7 +866,7 @@
       </div>
       <div class="modal-buttons" style="margin-top: 14px;">
         <button class="cancel" id="mayorCancel">Нет</button>
-        <button id="mayorConfirm" style="background:#1e3a8a;">Да, отменить</button>
+        <button class="confirm" id="mayorConfirm">Да, отменить</button>
       </div>
     </div>
   </div>
@@ -1292,7 +1315,7 @@
   });
 
   socket.on('rebelAwakened', () => {
-    // без alert — уведомление через UI
+    // без alert
   });
 
   socket.on('mayorVetoed', () => {
@@ -1304,7 +1327,7 @@
   });
 
   socket.on('bodyguardSaved', ({ name, self }) => {
-    // без alert — уведомление через dayResults
+    // без alert
   });
 
   socket.on('privateResult', (data) => {
