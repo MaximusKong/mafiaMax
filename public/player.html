@@ -37,7 +37,6 @@
     position: relative;
     z-index: 0;
   }
-  /* Дневной/ночной фон */
   body::before {
     content: '';
     position: fixed;
@@ -999,7 +998,6 @@
   let canBodyguardSave = false;
   let canLawyerSave = false;
 
-  // Управление фоном
   function setBackground(phase) {
     if (phase === 'night') {
       document.body.classList.add('is-night');
@@ -1247,7 +1245,7 @@
 
   function openLawyerPicker() {
     if (!dayData || !dayData.players) return;
-    if (dayData.lawyerUsedToday) return; // защита уже использована сегодня
+    if (dayData.lawyerUsedToday) return;
     lawyerTargets.innerHTML = '';
     const lastTarget = dayData.lastLawyerTarget || null;
     dayData.players.forEach(p => {
@@ -1294,7 +1292,7 @@
   });
 
   socket.on('rebelAwakened', () => {
-    alert('Мятежник пробудился и стал мафией!');
+    // без alert — уведомление через UI
   });
 
   socket.on('mayorVetoed', () => {
@@ -1306,10 +1304,7 @@
   });
 
   socket.on('bodyguardSaved', ({ name, self }) => {
-    setTimeout(() => {
-      if (self) alert(`Телохранитель спас себя от казни!`);
-      else alert(`${name} был спасён телохранителем!`);
-    }, 100);
+    // без alert — уведомление через dayResults
   });
 
   socket.on('privateResult', (data) => {
@@ -1368,11 +1363,7 @@
 
   socket.on('nightEnded', ({ day, deaths, youDied, pendingInvite }) => {
     nightScreen.style.display = 'none';
-    if (youDied) {
-      setTimeout(() => alert('Вы погибли этой ночью'), 100);
-    } else if (deaths.length) {
-      setTimeout(() => alert('Утро. Погибли: ' + deaths.map(d => d.name).join(', ')), 100);
-    }
+    setBackground('day');
     if (pendingInvite) {
       inviteBtn.style.display = 'flex';
     } else {
@@ -1774,6 +1765,7 @@
   socket.on('dayState', (data) => {
     dayData = data;
     myVote = null;
+    setBackground('day');
     dayScreen.style.display = 'block';
     dayDay.textContent = data.day;
 
@@ -1919,20 +1911,13 @@
   });
 
   socket.on('revoteStarted', ({ candidates }) => {
-    alert('Ничья! Переголосование между: ' + candidates.map(c => c.name).join(', '));
+    revoteNote.style.display = 'block';
+    revoteNote.textContent = 'Ничья! Переголосование между: ' + candidates.map(c => c.name).join(', ');
   });
 
   socket.on('dayResults', ({ day, lynched, tie, firstDay, mayorVeto, savedByBodyguard, bodyguardSavedHimself }) => {
     dayActionArea.style.display = 'none';
-    if (mayorVeto) return;
-    if (firstDay) {
-      alert('Первый день завершён. Голосования не было.');
-      return;
-    }
-    if (savedByBodyguard || bodyguardSavedHimself) return;
-    if (lynched) alert(`День ${day}. Казнён: ${lynched.name}`);
-    else if (tie) alert(`День ${day}. Ничья — никто не казнён`);
-    else alert(`День ${day}. Никто не казнён`);
+    setBackground('day');
   });
 
   socket.on('gameEnded', ({ winner, roles }) => {
