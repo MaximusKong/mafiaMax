@@ -94,7 +94,6 @@ function getTeamKey(player) {
   if (player.role === 'rebel' && player.rebelAwakened) return 'mafia';
   if (player.role === 'yakuza') return 'yakuza';
   if (player.role === 'maniac') return 'maniac';
-  // Мирные и неразбуженный мятежник
   return 'good';
 }
 
@@ -121,7 +120,6 @@ function maxMafiaWithDon(n) {
   return 2;
 }
 
-// Сколько мафий при якудзе
 function maxMafiaWithYakuza(n) {
   if (n <= 6) return 1;
   if (n <= 9) return 1;
@@ -159,7 +157,6 @@ function assignRoles(players) {
   const hasYakuza = fixedCounts.yakuza > 0;
   const hasRebel = fixedCounts.rebel > 0;
 
-  // Количество автомафий
   let autoMafiaCount = 0;
   if (!hasDon && !hasYakuza) {
     if (n <= 6) autoMafiaCount = 1;
@@ -168,48 +165,40 @@ function assignRoles(players) {
   } else if (hasYakuza && !hasDon) {
     autoMafiaCount = maxMafiaWithYakuza(n);
   } else if (hasDon) {
-    autoMafiaCount = 0; // дон сам = 1, остальные приглашаются
+    autoMafiaCount = 0;
   }
 
   const fixedMafia = fixedCounts.mafia || 0;
   const needMafia = Math.max(0, autoMafiaCount - fixedMafia);
 
-  // Пул мирных особых и нейтральных
   const goodSpecials = ['sheriff', 'doctor', 'bodyguard', 'mayor', 'journalist', 'lawyer'];
   const neutralSpecials = ['maniac', 'beauty'];
 
-  // Какие уже назначены вручную
   const alreadyAssigned = {};
   [...goodSpecials, ...neutralSpecials].forEach(r => {
     if (fixedCounts[r]) alreadyAssigned[r] = true;
   });
 
-  // Максимум мирных особых = мафий + 1 (включая уже назначенных)
   const maxGoodSpecials = Math.max(1, autoMafiaCount + 1);
   const fixedGoodCount = goodSpecials.filter(r => fixedCounts[r]).length;
   let needGood = Math.max(0, maxGoodSpecials - fixedGoodCount);
 
-  // Нейтральных (маньяк, красавчик) — не более 1 каждого, и не более 2 всего
   const fixedNeutralCount = neutralSpecials.filter(r => fixedCounts[r]).length;
-  let targetNeutralCount = Math.min(2, Math.max(0, Math.floor(n / 5))); // 0-2
-  if (hasYakuza) targetNeutralCount = Math.min(targetNeutralCount, 1); // при якудзе меньше злых
+  let targetNeutralCount = Math.min(2, Math.max(0, Math.floor(n / 5)));
+  if (hasYakuza) targetNeutralCount = Math.min(targetNeutralCount, 1);
   let needNeutral = Math.max(0, targetNeutralCount - fixedNeutralCount);
 
-  // Следователь при якудзе — 50% шанс
   let skipSheriff = false;
   if (hasYakuza && !fixedCounts.sheriff) {
     skipSheriff = Math.random() < 0.5;
   }
 
-  // Формируем пул хороших особых
   const goodPool = goodSpecials.filter(r => !alreadyAssigned[r]);
-  // Следователь с шансом пропуска
   let goodPoolFiltered = goodPool;
   if (skipSheriff) {
     goodPoolFiltered = goodPool.filter(r => r !== 'sheriff');
   }
 
-  // Перемешиваем
   for (let i = goodPoolFiltered.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [goodPoolFiltered[i], goodPoolFiltered[j]] = [goodPoolFiltered[j], goodPoolFiltered[i]];
@@ -220,7 +209,6 @@ function assignRoles(players) {
     [neutralPool[i], neutralPool[j]] = [neutralPool[j], neutralPool[i]];
   }
 
-  // Сколько слотов займём
   let assignMafia = Math.min(needMafia, free.length);
   let assignGood = Math.min(needGood, free.length - assignMafia);
   let assignNeutral = Math.min(needNeutral, free.length - assignMafia - assignGood);
@@ -232,7 +220,6 @@ function assignRoles(players) {
   for (let i = 0; i < assignNeutral; i++) pool.push(neutralPool[i]);
   for (let i = 0; i < assignCitizens; i++) pool.push('citizen');
 
-  // Финальное перемешивание
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -243,8 +230,8 @@ function assignRoles(players) {
     p.alive = true;
     p.rebelAwakened = false;
     p.bodyguardLives = p.role === 'bodyguard' ? 2 : 0;
-    p.yakuzaCheckedMafia = [];   // id проверенных мафиози
-    p.yakuzaCheckedAll = [];     // все проверенные
+    p.yakuzaCheckedMafia = [];
+    p.yakuzaCheckedAll = [];
   });
 
   return {
@@ -273,7 +260,7 @@ function beginNight(roomId) {
     timerHandle: null,
     journal: [],
     donInviteFeedback: game.pendingDonFeedback || null,
-    yakuzaMode: null // 'check' | 'kill'
+    yakuzaMode: null
   };
 
   game.pendingDonFeedback = null;
@@ -340,19 +327,14 @@ function getMafiaConfirmed(game) {
   return result;
 }
 
-// Может ли якудза убивать в эту ночь
-// Если есть живые мафиози — только проверенных мафиози
-// Если мафиози нет — любых
 function getYakuzaKillTargets(game, yakuzaPlayer) {
   if (!yakuzaPlayer) return [];
   const mafiosiAlive = game.players.filter(p => p.alive && isMafioso(p));
 
   if (mafiosiAlive.length === 0) {
-    // Все мафиози мертвы — можно убивать всех
     return game.players.filter(p => p.alive && p.id !== yakuzaPlayer.id);
   }
 
-  // Только проверенные мафиози (живые)
   const checkedMafia = yakuzaPlayer.yakuzaCheckedMafia || [];
   return game.players.filter(p => p.alive && checkedMafia.includes(p.id) && isMafioso(p) && p.id !== yakuzaPlayer.id);
 }
@@ -395,7 +377,6 @@ function broadcastNightState(roomId) {
       blockedCanPass = sameRoleAlive.length === 0;
     }
 
-    // Якудза
     let yakuzaData = null;
     if (p.role === 'yakuza') {
       const killTargets = getYakuzaKillTargets(game, p);
@@ -488,7 +469,6 @@ function handleNightAction(roomId, playerId, payload) {
       const target = game.players.find(p => p.id === targetId && p.alive);
       if (!target || target.id === player.id) return { ok: false, error: 'Цель недоступна' };
 
-      // Записываем проверку
       if (!player.yakuzaCheckedAll) player.yakuzaCheckedAll = [];
       if (!player.yakuzaCheckedAll.includes(target.id)) player.yakuzaCheckedAll.push(target.id);
 
@@ -505,7 +485,6 @@ function handleNightAction(roomId, playerId, payload) {
         message: isMaf ? `${target.name} — мафия` : `${target.name} — не мафия`
       });
 
-      // Фиксируем как действие
       if (!game.night.actions.yakuza) game.night.actions.yakuza = {};
       game.night.actions.yakuza[player.id] = { mode: 'check', targetId: target.id };
       tryAdvanceStep(roomId);
@@ -517,7 +496,6 @@ function handleNightAction(roomId, playerId, payload) {
       const mafiosiAlive = game.players.filter(p => p.alive && isMafioso(p)).length;
 
       if (mafiosiAlive > 0) {
-        // Убивать можно только проверенных мафиози
         const checked = player.yakuzaCheckedMafia || [];
         if (!checked.includes(targetId)) {
           return { ok: false, error: 'Можно убивать только проверенных мафиози' };
@@ -700,7 +678,6 @@ function handleBlockedPass(roomId, playerId) {
   const inMafiaTeam = isMafioso(player);
 
   if (player.role === 'yakuza') {
-    // Якудза заблокирован — пропускает шаг
     if (!game.night.actions.yakuza) game.night.actions.yakuza = {};
     game.night.actions.yakuza[player.id] = null;
 
@@ -761,18 +738,15 @@ function tryAdvanceStep(roomId) {
 
   const role = step.role;
 
-  // Якудза
   if (role === 'yakuza') {
     const yakuza = game.players.find(p => p.alive && p.role === 'yakuza');
     if (!yakuza) {
-      // Мёртв — пропускаем
       broadcastNightState(roomId);
       setTimeout(() => nextNightStep(roomId), 600);
       return;
     }
     const acted = game.night.actions.yakuza?.[yakuza.id];
     if (acted === undefined) {
-      // Ещё не действовал
       broadcastNightState(roomId);
       return;
     }
@@ -927,13 +901,11 @@ function finishNight(roomId) {
     const p = game.players.find(pp => pp.id === id);
     if (!p) return;
 
-    // Якудза не может быть убит ночью
     if (p.role === 'yakuza') {
       journal.push(`Якудза ${p.name} выжил этой ночью`);
       return;
     }
 
-    // Телохранитель с 2 жизнями
     if (p.role === 'bodyguard' && p.bodyguardLives > 1) {
       p.bodyguardLives--;
       journal.push(`Телохранитель ${p.name} выжил благодаря бронежилету (осталось ${p.bodyguardLives})`);
@@ -1034,7 +1006,7 @@ function finishNight(roomId) {
   game.revoteCandidates = null;
   game.firstDay = false;
   game.mayorVetoed = false;
-  game.lawyerTarget = null;  // защита адвоката сбрасывается каждый день
+  game.lawyerTarget = null;
   game.lawyerUsedToday = false;
 
   if (game.night.actions.beauty) {
@@ -1087,7 +1059,8 @@ function broadcastDayState(roomId) {
       canBodyguardSave,
       canLawyerSave,
       mayorVetoed: !!game.mayorVetoed,
-      bodyguardUsed: !!game.bodyguardUsed
+      bodyguardUsed: !!game.bodyguardUsed,
+      lastLawyerTarget: game.lastLawyerTarget || null
     });
   });
 
@@ -1504,6 +1477,15 @@ io.on('connection', (socket) => {
     game.lawyerUsedToday = true;
     game.lastLawyerTarget = target.id;
 
+    // Возвращаем уже отданные голоса за защищённого
+    if (game.votes) {
+      for (const voterId of Object.keys(game.votes)) {
+        if (game.votes[voterId] === target.id) {
+          delete game.votes[voterId];
+        }
+      }
+    }
+
     broadcastDayState(roomId);
     callback?.({ ok: true });
   });
@@ -1813,34 +1795,25 @@ function checkGameEnd(roomId, rebelResult) {
 
   const totalAlive = aliveMafia + aliveManiac + aliveYakuza + aliveCitizens;
 
-  // Якудза один — победа якудзы
   if (aliveYakuza === 1 && totalAlive === 1) {
     endGameAndBroadcast(roomId, 'yakuza');
     return;
   }
 
-  // Маньяк один — победа маньяка
   if (aliveManiac === 1 && totalAlive === 1) {
     endGameAndBroadcast(roomId, 'maniac');
     return;
   }
 
-  // Мафия победила — мафиози >= всех остальных (включая маньяка, якудзу, мирных)
-  // Но только если якудзы и маньяка нет? Нет, по классике: мафия >= остальных
   if (aliveMafia > 0 && aliveMafia >= (aliveCitizens + aliveManiac + aliveYakuza)) {
     endGameAndBroadcast(roomId, 'mafia');
     return;
   }
 
-  // Мирные победили — мафиози 0, маньяк 0, якудза 0
   if (aliveMafia === 0 && aliveManiac === 0 && aliveYakuza === 0) {
     endGameAndBroadcast(roomId, 'citizens');
     return;
   }
-
-  // Если маньяк + якудза — игра продолжается
-  // Если якудза + мирные — игра продолжается, якудза должен убить
-  // Если маньяк + мирные — игра продолжается, маньяк должен убить
 }
 
 const PORT = process.env.PORT || 3000;
