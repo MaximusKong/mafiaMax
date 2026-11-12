@@ -10,7 +10,7 @@
 <style>
   * { box-sizing: border-box; }
   :root {
-    --bg: #0f1f4a; --bg-2: #1e3a8a; --bg-3: #2563eb;
+    --bg-2: #1e3a8a; --bg-3: #2563eb;
     --card: #ffffff; --card-2: #dbeafe;
     --ink: #0f1f4a; --ink-soft: #4b6cb7;
     --accent: #2563eb; --accent-2: #3b82f6; --line: #bfdbfe;
@@ -18,17 +18,52 @@
     --yakuza-bg: #e9d5ff; --yakuza-ink: #581c87;
     --special-bg: #bfdbfe; --special-ink: #1e3a8a;
     --citizen-bg: #bbf7d0; --citizen-ink: #14532d;
+    --info-bg: #dbeafe; --info-border: #93c5fd; --info-ink: #1e3a8a;
   }
   html, body {
     margin: 0; padding: 0; min-height: 100vh;
     font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg); color: #ffffff;
+    background-color: #7fa8c9;
+    color: #ffffff;
+    position: relative;
   }
-  body { padding: 24px; }
-  h1 { font-size: 22px; margin: 0 0 20px; letter-spacing: 1px; }
+  /* Дневной/ночной фон */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-color: #7fa8c9;
+    background-image: url('/images/day-city.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 1;
+    transition: opacity 1s ease;
+    z-index: -2;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-color: #0a1535;
+    background-image: url('/images/night-city.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 1s ease;
+    z-index: -1;
+  }
+  body.is-night::after { opacity: 1; }
+  body.is-night::before { opacity: 0; }
+
+  body { padding: 24px; position: relative; z-index: 0; }
+  h1 { font-size: 22px; margin: 0 0 20px; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,0.5); }
   .layout {
     display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
     max-width: 1200px; margin: 0 auto;
+    position: relative;
+    z-index: 1;
   }
   .card {
     background: var(--card); color: var(--ink);
@@ -88,13 +123,14 @@
   li.player.role-bodyguard { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-lawyer  { border-left-color: #1e3a8a; background: var(--special-bg); color: var(--special-ink); }
   li.player.role-citizen { border-left-color: #14532d; background: var(--citizen-bg); color: var(--citizen-ink); }
+  li.player.info-blue    { border-left-color: var(--info-border); background: var(--info-bg); color: var(--info-ink); }
   .dot {
     display: inline-block; width: 8px; height: 8px;
     border-radius: 50%; margin-right: 8px; background: #dc2626;
   }
   .dot.on { background: #16a34a; }
   .muted { color: var(--ink-soft); font-size: 14px; }
-  #status { margin-top: 12px; font-size: 14px; color: #dbeafe; }
+  #status { margin-top: 12px; font-size: 14px; color: #dbeafe; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
   .section-title {
     font-size: 13px; letter-spacing: 2px; text-transform: uppercase;
     color: var(--ink-soft); margin: 16px 0 8px;
@@ -399,7 +435,7 @@
           <ul id="revoteList"></ul>
         </div>
         <div id="immunityBox" style="display:none; margin-top:12px;">
-          <div class="section-title">Защищены Красавчиком</div>
+          <div class="section-title">Защищены красавчиком</div>
           <ul id="immunityList"></ul>
         </div>
         <div id="lawyerBox" style="display:none; margin-top:12px;">
@@ -574,6 +610,16 @@
   let currentHintsUsed = 0;
   let alivePlayers = [];
 
+  // Управление фоном
+  function setBackground(phase) {
+    if (phase === 'night') {
+      document.body.classList.add('is-night');
+    } else {
+      document.body.classList.remove('is-night');
+    }
+  }
+  setBackground('day');
+
   socket.on('connect', () => {
     const saved = localStorage.getItem('mafia_host');
     if (saved && !roomId) {
@@ -702,7 +748,7 @@
     hintsInfo.textContent = `Подсказок: ${current} / ${total}`;
     hintLogBox.style.display = 'block';
     const li = document.createElement('li');
-    li.className = 'player';
+    li.className = 'player info-blue';
     li.textContent = `Подсказка ${current}/${total} выдана игроку ${playerName}`;
     hintLogList.appendChild(li);
   });
@@ -883,6 +929,9 @@
   socket.on('rebelAwakened', () => {});
 
   socket.on('phaseChanged', ({ phase }) => {
+    if (phase === 'night') setBackground('night');
+    else setBackground('day');
+
     if (phase === 'roles' || phase === 'night' || phase === 'day') {
       rolesBtn.style.display = 'none';
       closeGallery();
@@ -890,6 +939,7 @@
     }
     if (phase === 'ended') {
       endGameBtn.style.display = 'none';
+      setBackground('day');
     }
     if (phase === 'roles') {
       nightControls.style.display = 'block';
@@ -1045,22 +1095,21 @@
 
   socket.on('inviteResult', ({ name, accepted }) => {
     const li = document.createElement('li');
-    li.className = 'player';
-    li.style.borderLeftColor = accepted ? '#7f1d1d' : '#14532d';
+    li.className = 'player info-blue';
     li.textContent = `${name} ${accepted ? 'принял приглашение и стал мафией' : 'отклонил приглашение'}`;
     dayVotesList.appendChild(li);
   });
 
   socket.on('mayorVetoed', () => {
     const li = document.createElement('li');
-    li.className = 'player role-sheriff';
+    li.className = 'player info-blue';
     li.textContent = 'Мер отменил голосование';
     dayVotesList.appendChild(li);
   });
 
   socket.on('bodyguardSaved', ({ name, self }) => {
     const li = document.createElement('li');
-    li.className = 'player role-sheriff';
+    li.className = 'player info-blue';
     li.textContent = self ? `Телохранитель спас себя от казни` : `${name} спасён телохранителем`;
     dayResults.appendChild(li);
   });
@@ -1119,7 +1168,7 @@
         const t = state.players.find(p => p.id === tid);
         if (!t) return;
         const li = document.createElement('li');
-        li.className = 'player role-sheriff';
+        li.className = 'player info-blue';
         li.textContent = `Кандидат: ${t.name}`;
         revoteList.appendChild(li);
       });
@@ -1135,8 +1184,8 @@
         const t = state.players.find(p => p.id === tid);
         if (!t) return;
         const li = document.createElement('li');
-        li.className = 'player role-sheriff';
-        li.textContent = `${t.name} защищён от казни`;
+        li.className = 'player info-blue';
+        li.textContent = `${t.name} защищён красавчиком от казни`;
         immunityList.appendChild(li);
       });
     } else {
@@ -1150,7 +1199,7 @@
       const t = state.players.find(p => p.id === state.lawyerTarget);
       if (t) {
         const li = document.createElement('li');
-        li.className = 'player role-lawyer';
+        li.className = 'player info-blue';
         li.textContent = `${t.name} защищён адвокатом от голосования`;
         lawyerList.appendChild(li);
       }
@@ -1170,7 +1219,7 @@
       mayorList.innerHTML = '';
       abilityLines.forEach(line => {
         const li = document.createElement('li');
-        li.className = 'player role-sheriff';
+        li.className = 'player info-blue';
         li.textContent = line;
         mayorList.appendChild(li);
       });
@@ -1195,13 +1244,13 @@
     dayResults.innerHTML = '';
     const li = document.createElement('li');
     if (res.mayorVeto) {
-      li.className = 'player role-sheriff';
+      li.className = 'player info-blue';
       li.textContent = 'Голосование отменено мером — никто не казнён';
     } else if (res.firstDay) {
       li.className = 'player';
       li.textContent = 'Первый день завершён без голосования';
     } else if (res.savedByBodyguard || res.bodyguardSavedHimself) {
-      li.className = 'player role-sheriff';
+      li.className = 'player info-blue';
       li.textContent = res.lynched ? `${res.lynched.name} спасён телохранителем` : 'Казнь отменена';
     } else if (res.lynched) {
       li.className = 'player role-mafia';
@@ -1217,6 +1266,7 @@
   });
 
   socket.on('gameEnded', ({ winner, roles }) => {
+    setBackground('day');
     if (winner === 'manual') gameEndTitle.textContent = 'Игра завершена ведущим';
     else if (winner === 'mafia') gameEndTitle.textContent = 'Победила МАФИЯ';
     else if (winner === 'maniac') gameEndTitle.textContent = 'Победил МАНЬЯК';
@@ -1263,6 +1313,7 @@
     setupEl.style.display = 'block';
     createBtn.disabled = false;
     statusEl.textContent = '';
+    setBackground('day');
     lobbyList.style.display = 'block';
     gameList.style.display = 'none';
     startBtn.disabled = true;
